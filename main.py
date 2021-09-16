@@ -1,13 +1,21 @@
 from enum import Enum
+from typing import List, Optional
 
 import aiohttp
 from aiohttp import ClientError
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
 
 from apartments import apartments_predict
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"])
 
 
 class MaterialEnum(str, Enum):
@@ -21,6 +29,16 @@ class MaterialEnum(str, Enum):
     stalin = "stalin"
 
 
+class Coordinates(BaseModel):
+    lon: float
+    lat: float
+
+
+class Address(BaseModel):
+    label: str
+    coords: Coordinates
+
+
 class EstateModel(BaseModel):
     rooms: float
     floor: float
@@ -28,9 +46,19 @@ class EstateModel(BaseModel):
     story: float
     area_total: float
     area_living: float
-    address: str
+    address: Address
     year: float
     area_kitchen: float
+
+
+class ResultModel(BaseModel):
+    text: str
+    uri: Optional[str]
+
+
+class YModel(BaseModel):
+    part: str
+    results: List[ResultModel]
 
 
 @app.get("/")
@@ -45,18 +73,18 @@ def read_item(params: EstateModel):
     return {"prediction": prediction}
 
 
-@app.get("/y-proxy")
+@app.get("/y-proxy", response_model=YModel)
 async def get_suggestions(part: str):
     async with aiohttp.ClientSession() as session:
         try:
             async with session.get('https://suggest-maps.yandex.com/suggest-geo', params={
                 "fullpath": 1,
-                "lang": "en_RU",
+                "lang": "ru_RU",
                 "outformat": "json",
                 "v": 9,
-                "part": part
+                "part": "Москва, " + part
             }) as resp:
-                return {"response": await resp.json()}
+                return await resp.json()
         except ClientError:
             raise HTTPException
     pass
