@@ -8,6 +8,10 @@ from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 
 from apartments import apartments_predict
+from apartments_models import EstateModel, YModel
+from cars_models import CarModel
+from geo import get_distance, get_azimuth
+from сars import cars_predict
 
 app = FastAPI()
 app.add_middleware(
@@ -18,49 +22,6 @@ app.add_middleware(
     allow_headers=["*"])
 
 
-class MaterialEnum(str, Enum):
-    unset = "unset"
-    brick = "brick"
-    wood = "wood"
-    monolith = "monolith"
-    panel = "panel"
-    block = "block"
-    brick_monolith = "monolithBrick"
-    stalin = "stalin"
-
-
-class Coordinates(BaseModel):
-    lon: float
-    lat: float
-
-
-class Address(BaseModel):
-    label: str
-    coords: Coordinates
-
-
-class EstateModel(BaseModel):
-    rooms: float
-    floor: float
-    material: MaterialEnum
-    story: float
-    area_total: float
-    area_living: float
-    address: Address
-    year: float
-    area_kitchen: float
-
-
-class ResultModel(BaseModel):
-    text: str
-    uri: Optional[str]
-
-
-class YModel(BaseModel):
-    part: str
-    results: List[ResultModel]
-
-
 @app.get("/")
 def read_root():
     return {"Hello": "World"}
@@ -69,8 +30,39 @@ def read_root():
 @app.post("/estate")
 def read_item(params: EstateModel):
     prediction = apartments_predict(
-        params.material, params.floor, params.story, params.area_total, params.area_kitchen, 50, 10)
+        walls_material=params.material,
+        floor_number=params.floor,
+        floors_total=params.story,
+        total_area=params.area_total,
+        kitchen_area=params.area_kitchen,
+        distance=get_distance(latitude=params.address.coords.lat, longitude=params.address.coords.lon),
+        azimuth=get_azimuth(latitude=params.address.coords.lat, longitude=params.address.coords.lon))
     return {"prediction": prediction}
+
+
+@app.post("/car")
+def read_item(params: CarModel):
+    try:
+        prediction = cars_predict(
+            brand=params.brand,
+            fuel=params.fuel,
+            asp=params.aspiration,
+            carlen=params.car_length,
+            cnum=params.cylinder_count,
+            esz=params.engine_size * 100,
+            hpw=params.horsepower,
+            peakrpm=params.peak_rpm,
+            hwmpg=235.21/params.consumption_rate,
+            symb=params.symbol,
+            cbd=params.car_body_style,
+            dvw=params.drive_wheel,
+            et=params.engine,
+            fs=params.fuel_system
+        )
+        print(prediction)
+        return {"prediction": prediction[0] * 72}
+    except ZeroDivisionError:
+        raise HTTPException(status_code=400, detail="Consumption rate cannot be zero")
 
 
 @app.get("/y-proxy", response_model=YModel)
@@ -86,5 +78,5 @@ async def get_suggestions(part: str):
             }) as resp:
                 return await resp.json()
         except ClientError:
-            raise HTTPException
+            raise HTTPException(status_code=400, detail="Problems...")
     pass
