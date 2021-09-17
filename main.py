@@ -1,10 +1,6 @@
-from enum import Enum
-from typing import List, Optional
-
 import aiohttp
 from aiohttp import ClientError
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 
 from apartments import apartments_predict
@@ -28,7 +24,7 @@ def read_root():
 
 
 @app.post("/estate")
-def read_item(params: EstateModel):
+def read_estate(params: EstateModel):
     prediction = apartments_predict(
         walls_material=params.material,
         floor_number=params.floor,
@@ -41,7 +37,7 @@ def read_item(params: EstateModel):
 
 
 @app.post("/car")
-def read_item(params: CarModel):
+def read_car(params: CarModel):
     try:
         prediction = cars_predict(
             brand=params.brand,
@@ -52,7 +48,7 @@ def read_item(params: CarModel):
             esz=params.engine_size * 100,
             hpw=params.horsepower,
             peakrpm=params.peak_rpm,
-            hwmpg=235.21/params.consumption_rate,
+            hwmpg=235.21 / params.consumption_rate,
             symb=params.symbol,
             cbd=params.car_body_style,
             dvw=params.drive_wheel,
