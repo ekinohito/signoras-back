@@ -18,11 +18,6 @@ app.add_middleware(
     allow_headers=["*"])
 
 
-@app.get("/")
-def read_root():
-    return {"Hello": "World"}
-
-
 @app.post("/estate")
 def read_estate(params: EstateModel):
     prediction = apartments_predict(
